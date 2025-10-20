@@ -33,6 +33,14 @@ except:
 
 Footprint = namedtuple('Footprint', ['ref', 'fp', 'fp_id', 'sheet_id', 'filename'])
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+fh = logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'replicate_layout.log'))
+fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(fh)
+
+logger.debug("Plugin executed")
+
 
 Settings = namedtuple('Settings', ['rep_tracks', 'rep_zones', 'rep_text', 'rep_drawings',
                                    'group_layouts', 'group_footprints', 'group_tracks', 'group_zones', 'group_text', 'group_drawings',
@@ -682,12 +690,17 @@ class Replicator:
     @staticmethod
     def get_footprint_text_items(footprint):
         """ get all text item belonging to a footprint """
-        list_of_items = [footprint.fp.Reference(), footprint.fp.Value()]
-
+        list_of_items = []
         footprint_items = footprint.fp.GraphicalItems()
         for item in footprint_items:
             if type(item) is pcbnew.PCB_TEXT:
                 list_of_items.append(item)
+        # sort text items, as by default the order is random
+        list_of_items = sorted(list_of_items, key=lambda element: (element.GetLayer(), element.GetText()))
+        # unsortable fields, e.g. we need compare later R1 and R322 
+        list_of_items.insert(0, footprint.fp.Reference())
+        list_of_items.insert(1, footprint.fp.Value())
+
         return list_of_items
 
     def get_sheet_anchor_footprint(self, sheet):
@@ -959,14 +972,8 @@ class Replicator:
                 # replicate also text layout - also for anchor footprint. I am counting that the user is lazy and will
                 # just position the destination anchors and will not edit them
                 # get footprint text
-                src_text_items = self.get_footprint_text_items(src_fp)
-                dst_text_items = self.get_footprint_text_items(dst_fp)
-
-                # sort text items, as by default the order is random
-                src_fp_text_items = sorted(src_text_items,
-                                                  key=lambda element: (element.GetLayer(), element.GetText()))
-                dst_fp_text_items = sorted(dst_text_items,
-                                                  key=lambda element: (element.GetLayer(), element.GetText()))
+                src_fp_text_items = self.get_footprint_text_items(src_fp)
+                dst_fp_text_items = self.get_footprint_text_items(dst_fp)
 
                 # check if both footprints (source and the one for replication) have the same number of text items
                 if len(src_fp_text_items) != len(dst_fp_text_items):
@@ -975,6 +982,15 @@ class Replicator:
                             len(src_fp_text_items))
                         + ")\nthan footprint for replication: " + dst_fp.ref + " (" + repr(
                             len(dst_fp_text_items)) + ")")
+
+                def dbg_text_items(text_items):
+                    text_items_dbg = []
+                    for element in text_items:
+                        text_items_dbg.append(f"{element.GetLayer()}/{element.GetText()}")
+                    return text_items_dbg
+
+                logger.debug(f"src_fp_text_items: {dbg_text_items(src_fp_text_items)}")
+                logger.debug(f"dst_fp_text_items: {dbg_text_items(dst_fp_text_items)}")
 
                 # replicate each text item
                 src_text: pcbnew.PCB_TEXT
