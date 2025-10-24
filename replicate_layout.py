@@ -975,14 +975,6 @@ class Replicator:
                 src_fp_text_items = self.get_footprint_text_items(src_fp)
                 dst_fp_text_items = self.get_footprint_text_items(dst_fp)
 
-                # check if both footprints (source and the one for replication) have the same number of text items
-                if len(src_fp_text_items) != len(dst_fp_text_items):
-                    raise LookupError(
-                        "Source footprint: " + src_fp.ref + " has different number of text items (" + repr(
-                            len(src_fp_text_items))
-                        + ")\nthan footprint for replication: " + dst_fp.ref + " (" + repr(
-                            len(dst_fp_text_items)) + ")")
-
                 def dbg_text_items(text_items):
                     text_items_dbg = []
                     for element in text_items:
@@ -991,6 +983,13 @@ class Replicator:
 
                 logger.debug(f"src_fp_text_items: {dbg_text_items(src_fp_text_items)}")
                 logger.debug(f"dst_fp_text_items: {dbg_text_items(dst_fp_text_items)}")
+                # check if both footprints (source and the one for replication) have the same number of text items
+                if len(src_fp_text_items) != len(dst_fp_text_items):
+                    raise LookupError(
+                        "Source footprint: " + src_fp.ref + " has different number of text items (" + repr(
+                            len(src_fp_text_items))
+                        + ")\nthan footprint for replication: " + dst_fp.ref + " (" + repr(
+                            len(dst_fp_text_items)) + ")")
 
                 # replicate each text item
                 src_text: pcbnew.PCB_TEXT
